@@ -10,11 +10,14 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PaintFlagsDrawFilter;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.PorterDuff;
-import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -23,7 +26,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.provider.Settings;
-import static android.provider.Settings.System.SCREENSHOT_CROP_BEHAVIOR;
 import android.widget.ListPopupWindow;
 import android.util.Log;
 import android.view.Display;
@@ -33,11 +35,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.systemui.screenshot.CropImageView;
@@ -66,9 +70,13 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
     private int nCropMode = 0;
     private int nOverlayColor;
     private int drawColor;
+    private int penSize = 10;
     private int workMode = 0;
     private boolean isShowing = false;
-    private boolean isPopUpWorkModeShowing = false, isPopUpColorShowing = false, isPopUpCropModeShowing = false;
+    private boolean isPopUpWorkModeShowing = false;
+    private boolean isPopUpColorShowing = false;
+    private boolean isPopUpCropModeShowing = false;
+    private boolean isPopUpPenSizeShowing = false;
     private boolean receiverRegistered = false;
     Handler mainHandler;
     HandlerThread handlerThread = null;
@@ -85,8 +93,10 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
     static String KEY_CROP_MODE = "crop_mode";
     static String KEY_WORK_MODE = "work_mode";
     static String KEY_CREDITS = "credits";
+    static String KEY_PEN_SIZE = "pen_size";
 
     private SharedPreferences preferences;
+    private float mDensity;
 
     public ScreenshotEditor() {
 
@@ -98,7 +108,7 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
 
         mContext = ScreenshotEditor.this;
         preferences = getSharedPreferences(getPackageName() + "_preferences", MODE_PRIVATE);
-
+        mDensity = getResources().getDisplayMetrics().density;
 
         mainHandler = new Handler(getMainLooper());
 
@@ -135,8 +145,6 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
         if (nCropMode > 2)
             nCropMode = 0;
         setCropMode();
-
-        drawColor = preferences.getInt(KEY_DRAW_COLOR, Color.RED);
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(CropImageView.BROADCAST_BUTTON_BAR_VISIBILITY);
@@ -246,9 +254,9 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
             }
         });
         cropView = (CropImageView) mainLayout.findViewById(R.id.image);
-        cropView.setFrameColor(getResources().getColor(R.color.frame));
-        cropView.setHandleColor(getResources().getColor(R.color.handle));
-        cropView.setGuideColor(getResources().getColor(R.color.guide));
+        cropView.setFrameColor(getResources().getColor(R.color.crop_frame));
+        cropView.setHandleColor(getResources().getColor(R.color.crop_handle));
+        cropView.setGuideColor(getResources().getColor(R.color.crop_guide));
         cropView.setHandleSizeInDp(15);
         cropView.setTouchPaddingInDp(10);
         cropView.setGuideShowMode(CropImageView.ShowMode.SHOW_ON_TOUCH);
@@ -258,7 +266,7 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
         final ListPopupWindow listPopupWindowCropMode = new ListPopupWindow(mContext);
         nCropMode = preferences.getInt(KEY_WORK_MODE, 0);
         ImageArrayAdapter cropModeAdapter = new ImageArrayAdapter(mContext,
-                new Integer[]{R.drawable.crop_mode_free, R.drawable.crop_mode_square, R.drawable.crop_mode_circle});
+                new Integer[]{R.drawable.ic_image_crop_free, R.drawable.ic_image_crop_square, R.drawable.ic_image_crop_circle});
         listPopupWindowCropMode.setAdapter(cropModeAdapter);
         listPopupWindowCropMode.setSelection(nCropMode);
         listPopupWindowCropMode.setAnchorView(cropModeButton);
@@ -270,7 +278,6 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
                 preferences.edit().putInt(KEY_CROP_MODE, nCropMode).apply();
                 setCropMode();
                 listPopupWindowCropMode.dismiss();
-                isPopUpCropModeShowing = false;
             }
         });
         listPopupWindowCropMode.setOnDismissListener(new PopupWindow.OnDismissListener() {
@@ -282,10 +289,11 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
         cropModeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!isPopUpCropModeShowing)
+                if (!isPopUpCropModeShowing) {
                     listPopupWindowCropMode.show();
+                    isPopUpCropModeShowing = true;
+                }
                 else listPopupWindowCropMode.dismiss();
-                isPopUpCropModeShowing = !isPopUpCropModeShowing;
             }
         });
         cropModeButton.setColorFilter(nOverlayColor, PorterDuff.Mode.MULTIPLY);
@@ -305,50 +313,39 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
         saveButton.setOnClickListener(this);
         saveButton.setColorFilter(nOverlayColor, PorterDuff.Mode.MULTIPLY);
 
-        final Integer[] colors = new Integer[]{getResources().getColor(R.color.draw_color_1),
-                getResources().getColor(R.color.draw_color_2),
-                getResources().getColor(R.color.draw_color_3),
-                getResources().getColor(R.color.draw_color_4),
-                getResources().getColor(R.color.draw_color_5),
-                getResources().getColor(R.color.draw_color_6),
-                getResources().getColor(R.color.draw_color_7),
-                getResources().getColor(R.color.draw_color_8)};
+        final Integer[] colors = new Integer[]{getResources().getColor(R.color.crop_draw_color_1),
+                getResources().getColor(R.color.crop_draw_color_2),
+                getResources().getColor(R.color.crop_draw_color_3),
+                getResources().getColor(R.color.crop_draw_color_4),
+                getResources().getColor(R.color.crop_draw_color_5),
+                getResources().getColor(R.color.crop_draw_color_6),
+                getResources().getColor(R.color.crop_draw_color_7),
+                getResources().getColor(R.color.crop_draw_color_8)};
 
         final BitmapFactory.Options opt = new BitmapFactory.Options();
         opt.inJustDecodeBounds = true;
         BitmapFactory.decodeResource(mContext.getResources(), R.drawable.ic_image_edit, opt);
         float scale = getResources().getDisplayMetrics().density;
-        int dpAsPixels = (int) (4 * scale + 0.5f);
-        int imageSize = opt.outHeight;
 
         final ListPopupWindow listPopupWindowColorPicker = new ListPopupWindow(mContext);
-        listPopupWindowColorPicker.setAdapter(new ColorArrayAdapter(mContext, colors, imageSize));
+        listPopupWindowColorPicker.setAdapter(new ColorArrayAdapter(mContext, colors));
         listPopupWindowColorPicker.setWidth(ListPopupWindow.WRAP_CONTENT);
 
+        int width = mContext.getResources().getDimensionPixelSize(R.dimen.crop_buttons);
         final ImageButton drawColorButton = (ImageButton) mainLayout.findViewById(R.id.drawColor);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.height = imageSize - 4 * dpAsPixels;
-        params.width = imageSize - 4 * dpAsPixels;
         listPopupWindowColorPicker.setAnchorView(drawColorButton);
+        drawColor = preferences.getInt(KEY_DRAW_COLOR, getResources().getColor(R.color.crop_draw_color_1));
         cropView.setDrawColor(drawColor);
-        drawColorButton.setLayoutParams(params);
-        drawColorButton.setPadding(dpAsPixels, dpAsPixels, dpAsPixels, dpAsPixels);
-        final GradientDrawable gradientDrawable = new GradientDrawable();
-        gradientDrawable.setColor(drawColor);
-        gradientDrawable.setStroke(2, Color.BLACK);
-        drawColorButton.setBackground(gradientDrawable);
-        listPopupWindowColorPicker.setVerticalOffset(3 * dpAsPixels);
-        listPopupWindowColorPicker.setBackgroundDrawable(getResources().getDrawable(android.R.drawable.dialog_holo_light_frame));
-        listPopupWindowColorPicker.setWidth(imageSize + 4 * dpAsPixels);
-        listPopupWindowColorPicker.setHorizontalOffset(-4 * dpAsPixels);
+        drawColorButton.setImageDrawable(createColorImage(drawColor));
+
         listPopupWindowColorPicker.setDropDownGravity(Gravity.CENTER);
         drawColorButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!isPopUpColorShowing)
+                if (!isPopUpColorShowing) {
                     listPopupWindowColorPicker.show();
-                else listPopupWindowColorPicker.dismiss();
-                isPopUpColorShowing = !isPopUpColorShowing;
+                    isPopUpColorShowing = true;
+                }
             }
         });
         listPopupWindowColorPicker.setOnDismissListener(new PopupWindow.OnDismissListener() {
@@ -360,12 +357,52 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
         listPopupWindowColorPicker.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                gradientDrawable.setColor(colors[position]);
-                drawColorButton.setBackground(gradientDrawable);
-                preferences.edit().putInt(KEY_DRAW_COLOR, colors[position]).apply();
-                cropView.setDrawColor(colors[position]);
+                drawColor = colors[position];
+                drawColorButton.setImageDrawable(createColorImage(drawColor));
+                preferences.edit().putInt(KEY_DRAW_COLOR, drawColor).apply();
+                cropView.setDrawColor(drawColor);
                 listPopupWindowColorPicker.dismiss();
-                isPopUpColorShowing = false;
+            }
+        });
+
+
+        final String [] penSizeValues = getResources().getStringArray(R.array.crop_pen_size_entries);
+        final ListPopupWindow listPopupPenSizerPicker = new ListPopupWindow(mContext);
+        listPopupPenSizerPicker.setAdapter(new PenSizeArrayAdapter(this, android.R.layout.simple_list_item_1, penSizeValues));
+        listPopupPenSizerPicker.setWidth(ListPopupWindow.WRAP_CONTENT);
+
+        final ImageButton penSizeButton = (ImageButton) mainLayout.findViewById(R.id.penSize);
+        listPopupPenSizerPicker.setAnchorView(penSizeButton);
+        final int penSizeValue = preferences.getInt(KEY_PEN_SIZE, 5);
+        penSize = Math.round(penSizeValue * mDensity);
+        cropView.setPenSize(penSize);
+        penSizeButton.setImageDrawable(createPenSizeImage(penSize));
+
+        listPopupPenSizerPicker.setDropDownGravity(Gravity.CENTER);
+        penSizeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!isPopUpColorShowing) {
+                    listPopupPenSizerPicker.show();
+                    isPopUpPenSizeShowing = true;
+                }
+            }
+        });
+        listPopupPenSizerPicker.setOnDismissListener(new PopupWindow.OnDismissListener() {
+            @Override
+            public void onDismiss() {
+                isPopUpPenSizeShowing = false;
+            }
+        });
+        listPopupPenSizerPicker.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                final int penSizeValue = Integer.valueOf(penSizeValues[position]);
+                preferences.edit().putInt(KEY_PEN_SIZE, penSizeValue).apply();
+                penSize = Math.round(penSizeValue * mDensity);
+                penSizeButton.setImageDrawable(createPenSizeImage(penSize));
+                cropView.setPenSize(penSize);
+                listPopupPenSizerPicker.dismiss();
             }
         });
 
@@ -376,7 +413,7 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
         workModeButton = (ImageButton) mainLayout.findViewById(R.id.workMode);
         workMode = preferences.getInt(KEY_WORK_MODE, WORK_MODE_CROP);
         ImageArrayAdapter adapter = new ImageArrayAdapter(mContext,
-                new Integer[]{R.drawable.work_mode_crop, R.drawable.work_mode_draw, R.drawable.work_mode_nothing});
+                new Integer[]{R.drawable.ic_image_crop, R.drawable.ic_image_edit, R.drawable.ic_action_visibility});
         listPopupWindow.setAdapter(adapter);
         listPopupWindow.setSelection(workMode);
         listPopupWindow.setAnchorView(workModeButton);
@@ -387,7 +424,6 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
                 workMode = position;
                 setWorkMode();
                 listPopupWindow.dismiss();
-                isPopUpWorkModeShowing = false;
             }
         });
         listPopupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
@@ -399,10 +435,11 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
         workModeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!isPopUpWorkModeShowing)
+                if (!isPopUpWorkModeShowing) {
                     listPopupWindow.show();
+                    isPopUpWorkModeShowing = true;
+                }
                 else listPopupWindow.dismiss();
-                isPopUpWorkModeShowing = !isPopUpWorkModeShowing;
             }
         });
         setWorkMode();
@@ -427,7 +464,7 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
                 deleteBitmap(screenshotPath);
                 break;
             case R.id.share:
-                boolean cropAnytime = Settings.System.getInt(getContentResolver(), SCREENSHOT_CROP_BEHAVIOR, 1) != 0;
+                boolean cropAnytime = Settings.System.getInt(getContentResolver(), Settings.System.SCREENSHOT_CROP_BEHAVIOR, 1) != 0;
                 bm = cropAnytime ? cropView.getCroppedBitmap() : cropView.getImageBitmap();
                 cropView.setCropEnabled(false);
                 progressBar.setVisibility(View.VISIBLE);
@@ -436,7 +473,7 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
                 removeView();
                 break;
             case R.id.save:
-                cropAnytime = Settings.System.getInt(getContentResolver(), SCREENSHOT_CROP_BEHAVIOR, 1) != 0;
+                cropAnytime = Settings.System.getInt(getContentResolver(), Settings.System.SCREENSHOT_CROP_BEHAVIOR, 1) != 0;
                 bm = cropAnytime ? cropView.getCroppedBitmap() : cropView.getImageBitmap();
                 if (saveBitmap(bm))
                     msg = getString(R.string.action_save_success);
@@ -503,7 +540,7 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
                 cropView.setCropMode(CropImageView.CropMode.RATIO_1_1);
                 break;
             case 2:
-                cropModeButton.setImageDrawable(getResources().getDrawable(R.drawable.ic_image_panorama_fisheye));
+                cropModeButton.setImageDrawable(getResources().getDrawable(R.drawable.ic_image_crop_circle));
                 cropView.setCropMode(CropImageView.CropMode.CIRCLE);
                 break;
         }
@@ -522,7 +559,7 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
                 PixelFormat.TRANSLUCENT);
 
         params.dimAmount = 0.7f;
-        params.windowAnimations = R.style.DialogAnimations;
+        params.windowAnimations = R.style.CropDialogAnimations;
         params.flags += WindowManager.LayoutParams.FLAG_FULLSCREEN;
         return params;
     }
@@ -539,7 +576,7 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
                 WindowManager.LayoutParams.FLAG_DIM_BEHIND,
                 PixelFormat.TRANSLUCENT);
         params.dimAmount = 0.2f;
-        params.windowAnimations = R.style.DialogAnimations;
+        params.windowAnimations = R.style.CropDialogAnimations;
         params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
         return params;
     }
@@ -579,7 +616,7 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
                     final Intent intent = new Intent(android.content.Intent.ACTION_SEND);
                     intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file));
                     intent.setType("image/png");
-                    Intent sender = Intent.createChooser(intent, "Share via");
+                    Intent sender = Intent.createChooser(intent, null);
                     sender.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     getApplicationContext().startActivity(sender);
                 } catch (Exception e) {
@@ -621,5 +658,31 @@ public class ScreenshotEditor extends Service implements View.OnClickListener {
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_FULLSCREEN;
+    }
+
+    private BitmapDrawable createPenSizeImage(int penSize){
+        final int width = getResources().getDimensionPixelSize(R.dimen.crop_buttons_inlet);
+        final Canvas canvas = new Canvas();
+        canvas.setDrawFilter(new PaintFlagsDrawFilter(Paint.ANTI_ALIAS_FLAG,Paint.FILTER_BITMAP_FLAG));
+        final Bitmap bmp = Bitmap.createBitmap(width, width, Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(bmp);
+        final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(Color.BLACK);
+        paint.setStrokeWidth(penSize);
+        canvas.drawLine(0, width / 2, width, width / 2, paint);
+        return new BitmapDrawable(getResources(), bmp);
+    }
+
+    private BitmapDrawable createColorImage(int color){
+        final int width = getResources().getDimensionPixelSize(R.dimen.crop_buttons_inlet);
+        final Canvas canvas = new Canvas();
+        canvas.setDrawFilter(new PaintFlagsDrawFilter(Paint.ANTI_ALIAS_FLAG,Paint.FILTER_BITMAP_FLAG));
+        final Bitmap bmp = Bitmap.createBitmap(width, width, Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(bmp);
+        final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(color);
+        canvas.drawRect(0, 0, width, width, paint);
+        return new BitmapDrawable(getResources(), bmp);
     }
 }

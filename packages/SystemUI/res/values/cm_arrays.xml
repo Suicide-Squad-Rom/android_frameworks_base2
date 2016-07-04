@@ -102,6 +102,16 @@
         <item>@string/accessibility_quick_settings_live_display_changed_outdoor</item>
     </string-array>
 
+    <!-- those are dpi values! -->
+    <string-array name="crop_pen_size_entries" translatable="false">
+        <item>2</item>
+        <item>5</item>
+        <item>10</item>
+        <item>20</item>
+        <item>30</item>
+        <item>40</item>
+    </string-array>
+
     <array name="dockbatterymeter_bolt_points" translatable="false">
         <item>129</item><item>0</item>
         <item>199</item><item>0</item>

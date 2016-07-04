@@ -3,11 +3,13 @@ package com.android.systemui.screenshot;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.ImageView.ScaleType;
 
 import com.android.systemui.R;
 
@@ -34,8 +36,11 @@ public class ImageArrayAdapter extends ArrayAdapter<Integer> {
 
     private View getImageForPosition(int position) {
         ImageView imageView = new ImageView(getContext());
-        imageView.setBackgroundResource(images[position]);
-        imageView.setLayoutParams(new AbsListView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        imageView.setImageResource(images[position]);
+        imageView.setScaleType(ScaleType.CENTER_INSIDE);
+        int width = getContext().getResources().getDimensionPixelSize(R.dimen.crop_buttons);
+        AbsListView.LayoutParams params = new AbsListView.LayoutParams(width, width);
+        imageView.setLayoutParams(params);
         return imageView;
     }
 }

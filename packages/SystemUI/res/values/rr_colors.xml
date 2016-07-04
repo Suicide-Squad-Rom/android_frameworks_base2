@@ -87,30 +87,26 @@
     <color name="battery_juice_critical">#ff4444</color>
     <color name="battery_background">#ffffff</color>
     <color name="status">#ffffff</color>
-    
-     <color name="colorPrimary">#3F51B5</color>
-     <color name="colorPrimaryDark">#303F9F</color>
-     <color name="colorAccent">#FF4081</color>
- 
-     <color name="base">#FFFFFB</color>
-     <color name="overlay">#A61C1C1C</color>
-     <color name="text">#1C1C1C</color>
-     <color name="handle">#E0E0E0</color>
-     <color name="frame">#E0E0E0</color>
-     <color name="guide">#E0E0E0</color>
-     <color name="menu_bg">#FFFFFB</color>
- 
-     <color name="primaryPressed">#A61C1C1C</color>
-     <color name="primaryFocused">#E0E0E0</color>
-     <color name="primary">@android:color/transparent</color>
- 
-     <color name="draw_color_1">@android:color/white</color>
-     <color name="draw_color_2">@android:color/black</color>
-     <color name="draw_color_3">#9E9E9E</color>
-     <color name="draw_color_4">#F44336</color>
-     <color name="draw_color_5">#4CAF50</color>
-     <color name="draw_color_6">#2196F3</color>
-     <color name="draw_color_7">#FF9800</color>
-     <color name="draw_color_8">#FFEB3B</color>
+
+    <!-- No recents logo and text colors --> 
+    <color name="no_recents_one">#5affffff</color>
+    <color name="no_recents_two">#5affffff</color>
+    <color name="no_recents_three">#5affffff</color>
+    <color name="no_recents_text_color">#b2ffffff</color>
+
+    <!-- Screenshot Crop & Share -->
+    <color name="crop_handle">#E0E0E0</color>
+    <color name="crop_frame">#E0E0E0</color>
+    <color name="crop_guide">#E0E0E0</color>
+    <color name="crop_draw_color_1">@android:color/white</color>
+    <color name="crop_draw_color_2">@android:color/black</color>
+    <color name="crop_draw_color_3">#9E9E9E</color>
+    <color name="crop_draw_color_4">#F44336</color>
+    <color name="crop_draw_color_5">#4CAF50</color>
+    <color name="crop_draw_color_6">#2196F3</color>
+    <color name="crop_draw_color_7">#FF9800</color>
+    <color name="crop_draw_color_8">#FFEB3B</color>
+    <color name="ripple_material_light">#40000000</color>
+    <color name="ripple_material_dark">#40ffffff</color>
 
 </resources>
