@@ -191,4 +191,6 @@
   <java-symbol type="string" name="floating_window_snap_right"/>
   <java-symbol type="string" name="floating_window_minimize"/>
 
+  <!-- Screenshoot edit action -->
+  <java-symbol type="string" name="edit" />
 </resources>
