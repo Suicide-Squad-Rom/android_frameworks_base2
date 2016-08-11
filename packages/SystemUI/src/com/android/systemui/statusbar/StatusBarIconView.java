@@ -20,12 +20,14 @@ import android.app.Notification;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.ThemeConfig;
+import android.database.ContentObserver;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.UserHandle;
 import android.provider.Settings;
@@ -139,6 +141,9 @@ public class StatusBarIconView extends AnimatedImageView {
     }
 
     private boolean set(StatusBarIcon icon, boolean force) {
+	int numberBackgroundAlpha = Settings.System.getIntForUser(mContext.getContentResolver(),
+                Settings.System.STATUS_BAR_ICON_ALPHA, 255,
+                UserHandle.USER_CURRENT);
         final boolean iconEquals = mIcon != null && equalIcons(mIcon.icon, icon.icon);
         final boolean levelEquals = iconEquals
                 && mIcon.iconLevel == icon.iconLevel;
@@ -169,6 +174,7 @@ public class StatusBarIconView extends AnimatedImageView {
                     mNumberPaint.setTextSize(scaledPx);
                     mNumberBackground = getContext().getResources().getDrawable(
                             R.drawable.ic_notification_overlay);
+		    mNumberBackground.setAlpha(numberBackgroundAlpha);
                 }
                 placeNumber();
             } else {
@@ -202,6 +208,15 @@ public class StatusBarIconView extends AnimatedImageView {
         }
         setImageDrawable(drawable);
         return true;
+    }
+
+ private void updateNumberBackgroundAlpha() {
+        int newAlpha = Settings.System.getIntForUser(mContext.getContentResolver(),
+                Settings.System.STATUS_BAR_ICON_ALPHA, 255,
+                UserHandle.USER_CURRENT);
+        if (mNumberBackground != null) {
+            mNumberBackground.setAlpha(newAlpha);
+        }
     }
 
     private Drawable getIcon(StatusBarIcon icon) {
@@ -266,6 +281,8 @@ public class StatusBarIconView extends AnimatedImageView {
     @Override
     public void onAttachedToWindow() {
         super.onAttachedToWindow();
+	getContext().getContentResolver().registerContentObserver(Settings.System.getUriFor(
+                "status_bar_icon_alpha"), false, mSettingsObserver);
 
         if (mObserver != null) {
             mObserver.attach(this);
@@ -275,7 +292,7 @@ public class StatusBarIconView extends AnimatedImageView {
     @Override
     public void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-
+	getContext().getContentResolver().unregisterContentObserver(mSettingsObserver);
         if (mObserver != null) {
             mObserver.detach(this);
         }
@@ -339,6 +356,12 @@ public class StatusBarIconView extends AnimatedImageView {
         return mSlot;
     }
 
+    private ContentObserver mSettingsObserver = new ContentObserver(new Handler()) {
+        public void onChange(boolean selfChange, Uri uri) {
+            updateNumberBackgroundAlpha();
+        }
+    };
+
     static class GlobalSettingsObserver extends UserContentObserver {
         private static GlobalSettingsObserver sInstance;
         private ArrayList<StatusBarIconView> mIconViews = new ArrayList<StatusBarIconView>();
@@ -397,4 +420,3 @@ public class StatusBarIconView extends AnimatedImageView {
         }
     }
 }
-

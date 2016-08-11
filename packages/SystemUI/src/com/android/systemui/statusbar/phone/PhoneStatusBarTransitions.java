@@ -27,14 +27,9 @@ import com.android.systemui.statusbar.BarTransitions;
 import com.android.systemui.R;
 
 public final class PhoneStatusBarTransitions extends BarTransitions {
-    private static final float ICON_ALPHA_WHEN_NOT_OPAQUE = 1;
-    private static final float ICON_ALPHA_WHEN_LIGHTS_OUT_BATTERY_CLOCK = 0.5f;
-    private static final float ICON_ALPHA_WHEN_LIGHTS_OUT_NON_BATTERY_CLOCK = 0;
-
     private final PhoneStatusBarView mView;
-    private final float mIconAlphaWhenOpaque;
 
-    private View mLeftSide, mStatusIcons, mSignalCluster, mBattery, mClock,mNetworkTraffic, mRRLogo, mWeatherTextView ,mLeftWeatherTextView ,mCLogo, mMinitBattery;
+    private View mLeftSide, mStatusIcons, mSignalCluster, mBattery, mClock, mCenterClock ,mNetworkTraffic, mRRLogo, mWeatherTextView ,mLeftWeatherTextView ,mCLogo, mMinitBattery;
 
     private Animator mCurrentAnimation;
 
@@ -44,8 +39,6 @@ public final class PhoneStatusBarTransitions extends BarTransitions {
                 R.color.status_bar_background_transparent,
                 com.android.internal.R.color.battery_saver_mode_color);
         mView = view;
-        final Resources res = mView.getContext().getResources();
-        mIconAlphaWhenOpaque = res.getFraction(R.dimen.status_bar_icon_drawing_alpha, 1, 1);
     }
 
     public void init() {
@@ -56,7 +49,8 @@ public final class PhoneStatusBarTransitions extends BarTransitions {
         mClock = mView.findViewById(R.id.clock);
         mNetworkTraffic = mView.findViewById(R.id.networkTraffic);
         mRRLogo = mView.findViewById(R.id.rr_logo);
-	mCLogo =mView.findViewById(R.id.custom);
+	mCLogo = mView.findViewById(R.id.custom);
+	mCenterClock = mView.findViewById(R.id.center_clock);
         mWeatherTextView = mView.findViewById(R.id.weather_temp);
         mLeftWeatherTextView = mView.findViewById(R.id.left_weather_temp);
         mMinitBattery = mView.findViewById(R.id.minitBattery);
@@ -68,22 +62,6 @@ public final class PhoneStatusBarTransitions extends BarTransitions {
         return ObjectAnimator.ofFloat(v, "alpha", v.getAlpha(), toAlpha);
     }
 
-    private float getNonBatteryClockAlphaFor(int mode) {
-        return isLightsOut(mode) ? ICON_ALPHA_WHEN_LIGHTS_OUT_NON_BATTERY_CLOCK
-                : !isOpaque(mode) ? ICON_ALPHA_WHEN_NOT_OPAQUE
-                : mIconAlphaWhenOpaque;
-    }
-
-    private float getBatteryClockAlpha(int mode) {
-        return isLightsOut(mode) ? ICON_ALPHA_WHEN_LIGHTS_OUT_BATTERY_CLOCK
-                : getNonBatteryClockAlphaFor(mode);
-    }
-
-    private boolean isOpaque(int mode) {
-        return !(mode == MODE_SEMI_TRANSPARENT || mode == MODE_TRANSLUCENT
-                || mode == MODE_TRANSPARENT || mode == MODE_LIGHTS_OUT_TRANSPARENT);
-    }
-
     @Override
     protected void onTransition(int oldMode, int newMode, boolean animate) {
         super.onTransition(oldMode, newMode, animate);
@@ -92,25 +70,25 @@ public final class PhoneStatusBarTransitions extends BarTransitions {
 
     private void applyMode(int mode, boolean animate) {
         if (mLeftSide == null) return; // pre-init
-        float newAlpha = getNonBatteryClockAlphaFor(mode);
-        float newAlphaBC = getBatteryClockAlpha(mode);
+        float newIconAlpha = mView.getIconAlpha();
         if (mCurrentAnimation != null) {
             mCurrentAnimation.cancel();
         }
         if (animate) {
             AnimatorSet anims = new AnimatorSet();
             anims.playTogether(
-                    animateTransitionTo(mLeftSide, newAlpha),
-                    animateTransitionTo(mStatusIcons, newAlpha),
-                    animateTransitionTo(mSignalCluster, newAlpha),
-                    animateTransitionTo(mNetworkTraffic, newAlpha),
-                    animateTransitionTo(mWeatherTextView, newAlpha),
-                    animateTransitionTo(mLeftWeatherTextView, newAlpha),
-                    animateTransitionTo(mBattery, newAlphaBC),
-                    animateTransitionTo(mClock, newAlphaBC),
-                    animateTransitionTo(mRRLogo, newAlphaBC),
-		            animateTransitionTo(mCLogo, newAlphaBC),
-                    animateTransitionTo(mMinitBattery, newAlphaBC)
+                    animateTransitionTo(mLeftSide, newIconAlpha),
+                    animateTransitionTo(mStatusIcons, newIconAlpha),
+                    animateTransitionTo(mWeatherTextView, newIconAlpha),
+                    animateTransitionTo(mLeftWeatherTextView, newIconAlpha),
+                    animateTransitionTo(mSignalCluster, newIconAlpha),
+                    animateTransitionTo(mNetworkTraffic, newIconAlpha),
+                    animateTransitionTo(mBattery, newIconAlpha),
+                    animateTransitionTo(mClock, newIconAlpha),
+                    animateTransitionTo(mCenterClock, newIconAlpha),
+                    animateTransitionTo(mMinitBattery, newIconAlpha),
+		    animateTransitionTo(mRRLogo, newIconAlpha),
+		    animateTransitionTo(mCLogo, newIconAlpha)
                     );
             if (isLightsOut(mode)) {
                 anims.setDuration(LIGHTS_OUT_DURATION);
@@ -118,17 +96,17 @@ public final class PhoneStatusBarTransitions extends BarTransitions {
             anims.start();
             mCurrentAnimation = anims;
         } else {
-            mLeftSide.setAlpha(newAlpha);
-            mStatusIcons.setAlpha(newAlpha);
-            mSignalCluster.setAlpha(newAlpha);
-            mNetworkTraffic.setAlpha(newAlpha);
-            mWeatherTextView.setAlpha(newAlpha);
-            mLeftWeatherTextView.setAlpha(newAlpha);
-            mBattery.setAlpha(newAlphaBC);
-            mClock.setAlpha(newAlphaBC);
-            mRRLogo.setAlpha(newAlphaBC);
-	        mCLogo.setAlpha(newAlphaBC);
-            mMinitBattery.setAlpha(newAlphaBC);
+            mLeftSide.setAlpha(newIconAlpha);
+            mStatusIcons.setAlpha(newIconAlpha);
+            mSignalCluster.setAlpha(newIconAlpha);
+            mNetworkTraffic.setAlpha(newIconAlpha);
+            mWeatherTextView.setAlpha(newIconAlpha);
+            mLeftWeatherTextView.setAlpha(newIconAlpha);
+            mBattery.setAlpha(newIconAlpha);
+            mClock.setAlpha(newIconAlpha);
+            mRRLogo.setAlpha(newIconAlpha);
+	    mCLogo.setAlpha(newIconAlpha);
+            mMinitBattery.setAlpha(newIconAlpha);
         }
     }
 }

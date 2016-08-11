@@ -148,6 +148,10 @@ public class StatusBarIconController implements Tunable {
     private ImageView mCLogo;
     private NetworkTraffic mNetworkTraffic;
 
+    private Clock mClock;
+    private Clock mCclock;
+    private Clock mLeftClock;
+
     private final ArraySet<String> mIconBlacklist = new ArraySet<>();
 
     private final Runnable mTransitionDeferringDoneRunnable = new Runnable() {
@@ -185,6 +189,9 @@ public class StatusBarIconController implements Tunable {
 	mRRLogoRight = (ImageView) statusBar.findViewById(R.id.rr_logo);
 	mRRLogoCenter = (ImageView) statusBar.findViewById(R.id.center_rr_logo);
 	mRRLogoBefore = (ImageView) statusBar.findViewById(R.id.before_icons_rr_logo);
+	mClock = (Clock) statusBar.findViewById(R.id.clock);
+	mCclock = (Clock) statusBar.findViewById(R.id.center_clock);
+	mLeftClock = (Clock) statusBar.findViewById(R.id.left_clock);
         mCarrierLabel = (TextView) statusBar.findViewById(R.id.statusbar_carrier_text);
         mWeather = (TextView) statusBar.findViewById(R.id.weather_temp);
         mWeatherLeft = (TextView) statusBar.findViewById(R.id.left_weather_temp);
@@ -252,7 +259,7 @@ public class StatusBarIconController implements Tunable {
                 com.android.internal.R.dimen.status_bar_icon_size);
         mIconHPadding = mContext.getResources().getDimensionPixelSize(
                 R.dimen.status_bar_icon_padding);
-        //mClockController.updateFontSize();
+        FontSizeUtils.updateFontSize(mCarrier, R.dimen.carrier_label_height);
         carrierLabelVisibility();
     }
 
@@ -636,6 +643,7 @@ public class StatusBarIconController implements Tunable {
  	mNetworkTraffic.setDarkIntensity(mDarkIntensity);
 	}
         applyNotificationIconsTint();
+        applyIconAlpha();
     }
 
     private void applyNotificationIconsTint() {
@@ -653,6 +661,60 @@ public class StatusBarIconController implements Tunable {
 		}
             }
         }
+    }
+
+    public void applyIconAlpha() {
+        final float iconAlpha = setIconAlpha();
+	try {
+        mStatusIcons.setAlpha(iconAlpha);
+        mSignalCluster.setAlpha(iconAlpha);
+        mMoreIcon.setAlpha(iconAlpha);
+        mRRLogo.setAlpha(iconAlpha);
+	mCLogo.setAlpha(iconAlpha);
+        mBatteryLevelTextView.setAlpha(iconAlpha);
+        mBatteryMeterView.setAlpha(iconAlpha);
+        mClock.setAlpha(iconAlpha);
+        mCclock.setAlpha(iconAlpha);
+        mLeftClock.setAlpha(iconAlpha);
+        mCarrierLabel.setAlpha(iconAlpha);
+        mNetworkTraffic.setAlpha(iconAlpha);
+	} catch (Exception e) {}
+    }
+
+    public void updateIconAlpha(int alpha) {
+        final float newAlpha = alphaIntToFloat(alpha);
+        for (int i = 0; i < mNotificationIcons.getChildCount(); i++) {
+            StatusBarIconView v = (StatusBarIconView) mNotificationIcons.getChildAt(i);
+            boolean isPreL = Boolean.TRUE.equals(v.getTag(R.id.icon_is_pre_L));
+            boolean colorize = !isPreL || isGrayscale(v);
+            if (colorize) {
+                v.setAlpha(alpha);
+            }
+        }
+	try {
+        mStatusIcons.setAlpha(newAlpha);
+        mSignalCluster.setAlpha(newAlpha);
+        mMoreIcon.setAlpha(newAlpha);
+	mCLogo.setAlpha(newAlpha);
+        mRRLogo.setAlpha(newAlpha);
+        mBatteryLevelTextView.setAlpha(newAlpha);
+        mBatteryMeterView.setAlpha(newAlpha);
+        mClock.setAlpha(newAlpha);
+        mCclock.setAlpha(newAlpha);
+        mLeftClock.setAlpha(newAlpha);
+        mCarrierLabel.setAlpha(newAlpha);
+        mNetworkTraffic.setAlpha(newAlpha);
+	} catch (Exception e) {}
+    }
+
+    private float setIconAlpha() {
+        return alphaIntToFloat(Settings.System.getIntForUser(mContext.getContentResolver(),
+                Settings.System.STATUS_BAR_ICON_ALPHA, 255,
+                UserHandle.USER_CURRENT));
+    }
+
+    private static float alphaIntToFloat(int alpha) {
+        return (float) Math.max(0, Math.min(255, alpha)) / 255;
     }
 
     private boolean isGrayscale(StatusBarIconView v) {
@@ -983,6 +1045,9 @@ public class StatusBarIconController implements Tunable {
          ContentResolver resolver = mContext.getContentResolver();
          resolver.registerContentObserver(Settings.System
                  .getUriFor(Settings.System.HIDE_CARRIER_MAX_SWITCH),
+                 false, this, UserHandle.USER_CURRENT);
+         resolver.registerContentObserver(Settings.System
+                 .getUriFor(Settings.System.HIDE_CARRIER_MAX_NOTIFICATION),
                  false, this, UserHandle.USER_CURRENT);
          resolver.registerContentObserver(Settings.System
                  .getUriFor(Settings.System.HIDE_CARRIER_MAX_NOTIFICATION),

@@ -2862,6 +2862,16 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         return entry.row.getParent() instanceof NotificationStackScrollLayout;
     }
 
+    protected void updateStatusBarIconsAlpha(int alpha) {
+        mIconController.updateIconAlpha(alpha);
+        if (rrLogo != null) {
+            rrLogo.setAlpha(alpha);
+        }
+	if (mCLogo != null) {
+	    mCLogo.setAlpha(alpha);
+	}
+    }
+
     @Override
     public void updateNotifications() {
         mNotificationData.filterAndSort();
@@ -4688,10 +4698,10 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     public void showRRLogo(boolean show , int color , int style) {
         if (mStatusBarView == null) return;
 
-  	 if (!show) {
+ 	if (!show) {
             rrLogo.setVisibility(View.GONE);
             return;
-        }
+	}
 	if (color != 0xFFFFFFFF) {
        	    rrLogo.setColorFilter(color, Mode.SRC_IN);
 	} else {
@@ -4717,10 +4727,10 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
 
 	if (mStatusBarView == null) return;
 
-  	 if (!show) {
+ 	if (!show) {
             mCLogo.setVisibility(View.GONE);
             return;
-        }
+	}
 	if (color != 0xFFFFFFFF) {
 		mCLogo.setColorFilter(color, Mode.MULTIPLY);
 	} else {
